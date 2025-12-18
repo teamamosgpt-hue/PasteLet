@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pastelet — Bloc de notas online</title>
+  <meta name="description" content="Pastelet: pega, guarda y comparte texto como Pastebin/Pastefy. Incluye modo RAW." />
+
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel:#0f1733;
+      --panel2:#0c132b;
+      --text:#e9eeff;
+      --muted:#9aa7d6;
+      --line:#24305f;
+      --accent:#7aa2ff;
+      --good:#4ade80;
+      --warn:#fbbf24;
+      --bad:#fb7185;
+      --shadow: 0 12px 30px rgba(0,0,0,.35);
+      --radius: 16px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono","Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:var(--sans);
+      background:
+        radial-gradient(1200px 600px at 10% 10%, rgba(122,162,255,.25), transparent 60%),
+        radial-gradient(900px 500px at 90% 20%, rgba(74,222,128,.16), transparent 60%),
+        radial-gradient(1100px 700px at 60% 90%, rgba(251,113,133,.12), transparent 60%),
+        var(--bg);
+      color:var(--text);
+      min-height:100vh;
+      display:flex;
+      align-items:stretch;
+      justify-content:center;
+      padding:24px;
+    }
+
+    .app{
+      width:min(1100px, 100%);
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
+
+    header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:18px 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+    }
+
+    .brand{
+      display:flex; align-items:center; gap:12px;
+    }
+    .logo{
+      width:44px; height:44px;
+      border-radius: 14px;
+      background:
+        radial-gradient(circle at 30% 30%, rgba(255,255,255,.35), transparent 40%),
+        linear-gradient(135deg, rgba(122,162,255,.95), rgba(74,222,128,.85));
+      box-shadow: 0 10px 18px rgba(122,162,255,.18);
+      display:grid; place-items:center;
+      font-weight:900;
+      color:#07102a;
+      user-select:none;
+    }
+    .brand h1{
+      margin:0; font-size:18px; letter-spacing:.3px;
+      line-height:1.1;
+    }
+    .brand p{
+      margin:2px 0 0;
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .toolbar{
+      display:flex;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:flex-end;
+      gap:8px;
+    }
+
+    .btn{
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius: 12px;
+      cursor:pointer;
+      font-weight:600;
+      font-size:13px;
+      transition: transform .05s ease, background .2s ease, border-color .2s ease;
+      user-select:none;
+    }
+    .btn:hover{
+      background: rgba(255,255,255,.06);
+      border-color: rgba(255,255,255,.18);
+    }
+    .btn:active{ transform: scale(.98); }
+    .btn.primary{
+      border-color: rgba(122,162,255,.35);
+      background: rgba(122,162,255,.14);
+    }
+    .btn.good{
+      border-color: rgba(74,222,128,.35);
+      background: rgba(74,222,128,.12);
+    }
+    .btn.warn{
+      border-color: rgba(251,191,36,.35);
+      background: rgba(251,191,36,.10);
+    }
+    .btn.bad{
+      border-color: rgba(251,113,133,.35);
+      background: rgba(251,113,133,.10);
+    }
+
+    .panel{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      padding:16px;
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .toprow{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:space-between;
+    }
+
+    .inputs{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    input[type="text"], select{
+      appearance:none;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.03);
+      color:var(--text);
+      padding:10px 12px;
+      border-radius: 12px;
+      outline:none;
+      font-weight:600;
+      font-size:13px;
+      min-width: 220px;
+    }
+    select{ min-width: 160px; }
+    input[type="text"]::placeholder{ color: rgba(233,238,255,.55); }
+
+    .meta{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      align-items:center;
+      color:var(--muted);
+      font-size:12px;
+      font-family: var(--mono);
+    }
+    .dot{
+      width:6px; height:6px; border-radius:99px; background: rgba(122,162,255,.9);
+      box-shadow: 0 0 12px rgba(122,162,255,.6);
+      display:inline-block;
+      margin-right:6px;
+      vertical-align:middle;
+    }
+
+    .editorWrap{
+      position:relative;
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: 14px;
+      overflow:hidden;
+      background: linear-gradient(180deg, rgba(12,19,43,.7), rgba(12,19,43,.55));
+    }
+
+    textarea{
+      width:100%;
+      min-height: 58vh;
+      border:0;
+      resize:vertical;
+      outline:none;
+      padding:16px;
+      background: transparent;
+      color:var(--text);
+      font-family: var(--mono);
+      font-size:14px;
+      line-height:1.5;
+      tab-size:2;
+    }
+
+    .statusbar{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px 12px;
+      border-top: 1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.18);
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size:12px;
+    }
+
+    .toast{
+      position: fixed;
+      left:50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      background: rgba(15,23,51,.92);
+      border: 1px solid rgba(255,255,255,.12);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 999px;
+      box-shadow: var(--shadow);
+      font-family: var(--mono);
+      font-size: 12px;
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    .toast.show{
+      opacity:1;
+      transform: translateX(-50%) translateY(-4px);
+    }
+
+    footer{
+      color: rgba(233,238,255,.55);
+      font-size: 12px;
+      text-align:center;
+      padding: 4px 0 0;
+    }
+
+    @media (max-width: 720px){
+      input[type="text"]{ min-width: 100%; }
+      select{ min-width: 100%; }
+      .toolbar{ justify-content:flex-start; }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <header>
+      <div class="brand">
+        <div class="logo">P</div>
+        <div>
+          <h1>Pastelet</h1>
+          <p>Bloc de notas online · comparte con link · modo RAW</p>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <button class="btn bad" id="btnClear" title="Borrar el editor (no se puede deshacer)">Limpiar</button>
+        <button class="btn" id="btnDownload" title="Descargar como .txt">Descargar</button>
+        <button class="btn" id="btnCopyText" title="Copiar el texto al portapapeles">Copiar texto</button>
+        <button class="btn primary" id="btnShare" title="Generar link con el contenido">Compartir</button>
+        <button class="btn good" id="btnCopyLink" title="Copiar link de compartir">Copiar link</button>
+        <button class="btn warn" id="btnRaw" title="Abrir vista RAW (solo texto)">RAW</button>
+      </div>
+    </header>
+
+    <section class="panel">
+      <div class="toprow">
+        <div class="inputs">
+          <input id="title" type="text" placeholder="Título (opcional) — ej: Apuntes de clase" />
+          <select id="format" title="Formato (solo etiqueta visual)">
+            <option value="txt">Texto</option>
+            <option value="md">Markdown</option>
+            <option value="js">JavaScript</option>
+            <option value="py">Python</option>
+            <option value="html">HTML</option>
+            <option value="css">CSS</option>
+            <option value="json">JSON</option>
+          </select>
+        </div>
+
+        <div class="meta" id="meta">
+          <span><span class="dot"></span>autosave: ON</span>
+          <span>·</span>
+          <span id="lastSaved">guardado: —</span>
+        </div>
+      </div>
+
+      <div class="editorWrap">
+        <textarea id="editor" spellcheck="false" placeholder="Escribe o pega tu texto aquí..."></textarea>
+        <div class="statusbar">
+          <div id="statsLeft">líneas: 0 · caracteres: 0</div>
+          <div id="statsRight">modo: editor</div>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      Pastelet funciona sin servidor: al “Compartir”, el contenido se guarda dentro del link (hash). Ideal para textos cortos/medios.
+    </footer>
+
+    <div class="toast" id="toast">OK</div>
+  </main>
+
+  <script>
+    // ---------------------------
+    // Pastelet — 100% front-end
+    // Compartir: guarda contenido en URL hash (#p=...)
+    // RAW: ?raw=1 muestra solo texto (sin UI)
+    // ---------------------------
+
+    const $ = (id) => document.getElementById(id);
+
+    const editor = $("editor");
+    const title = $("title");
+    const format = $("format");
+    const lastSaved = $("lastSaved");
+    const statsLeft = $("statsLeft");
+    const statsRight = $("statsRight");
+    const toast = $("toast");
+
+    const btnClear = $("btnClear");
+    const btnDownload = $("btnDownload");
+    const btnCopyText = $("btnCopyText");
+    const btnShare = $("btnShare");
+    const btnCopyLink = $("btnCopyLink");
+    const btnRaw = $("btnRaw");
+
+    const LS_KEY = "pastelet_autosave_v1";
+
+    function showToast(msg){
+      toast.textContent = msg;
+      toast.classList.add("show");
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(() => toast.classList.remove("show"), 1200);
+    }
+
+    // Base64 URL-safe helpers (so the link works fine)
+    function toB64Url(str){
+      const bytes = new TextEncoder().encode(str);
+      let bin = "";
+      bytes.forEach(b => bin += String.fromCharCode(b));
+      const b64 = btoa(bin)
+        .replace(/\+/g, "-")
+        .replace(/\//g, "_")
+        .replace(/=+$/g, "");
+      return b64;
+    }
+
+    function fromB64Url(b64url){
+      const b64 = b64url
+        .replace(/-/g, "+")
+        .replace(/_/g, "/")
+        + "===".slice((b64url.length + 3) % 4);
+      const bin = atob(b64);
+      const bytes = new Uint8Array([...bin].map(ch => ch.charCodeAt(0)));
+      return new TextDecoder().decode(bytes);
+    }
+
+    function nowStamp(){
+      const d = new Date();
+      const pad = (n) => String(n).padStart(2, "0");
+      return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+
+    function calcStats(text){
+      const lines = text.length ? text.split("\n").length : 0;
+      const chars = text.length;
+      return { lines, chars };
+    }
+
+    function refreshStats(){
+      const { lines, chars } = calcStats(editor.value);
+      statsLeft.textContent = `líneas: ${lines} · caracteres: ${chars}`;
+    }
+
+    function autosave(){
+      const payload = {
+        title: title.value || "",
+        format: format.value || "txt",
+        text: editor.value || "",
+        savedAt: nowStamp()
+      };
+      localStorage.setItem(LS_KEY, JSON.stringify(payload));
+      lastSaved.textContent = `guardado: ${payload.savedAt}`;
+    }
+
+    function loadAutosave(){
+      try{
+        const raw = localStorage.getItem(LS_KEY);
+        if(!raw) return false;
+        const data = JSON.parse(raw);
+        title.value = data.title ?? "";
+        format.value = data.format ?? "txt";
+        editor.value = data.text ?? "";
+        lastSaved.textContent = `guardado: ${data.savedAt ?? "—"}`;
+        refreshStats();
+        return true;
+      }catch{
+        return false;
+      }
+    }
+
+    function parseHashPaste(){
+      // hash example: #p=....&t=...&f=...
+      const hash = location.hash.startsWith("#") ? location.hash.slice(1) : "";
+      if(!hash) return null;
+
+      const params = new URLSearchParams(hash);
+      const p = params.get("p");
+      if(!p) return null;
+
+      let text = "";
+      try { text = fromB64Url(p); } catch { text = ""; }
+
+      let t = "";
+      try { t = params.get("t") ? fromB64Url(params.get("t")) : ""; } catch { t = ""; }
+
+      const f = params.get("f") || "txt";
+
+      return { text, title: t, format: f };
+    }
+
+    function buildShareLink(){
+      const params = new URLSearchParams();
+      params.set("p", toB64Url(editor.value || ""));
+      if(title.value.trim()) params.set("t", toB64Url(title.value.trim()));
+      params.set("f", (format.value || "txt"));
+      const base = location.origin + location.pathname;
+      return `${base}#${params.toString()}`;
+    }
+
+    function buildRawLink(shareLink){
+      const u = new URL(shareLink);
+      u.searchParams.set("raw", "1");
+      return u.toString();
+    }
+
+    async function copyToClipboard(text){
+      try{
+        await navigator.clipboard.writeText(text);
+        return true;
+      }catch{
+        // Fallback
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        const ok = document.execCommand("copy");
+        document.body.removeChild(ta);
+        return ok;
+      }
+    }
+
+    function downloadText(filename, text){
+      const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }
+
+    // ---------------------------
+    // RAW MODE
+    // ---------------------------
+    const urlParams = new URLSearchParams(location.search);
+    const rawMode = urlParams.get("raw") === "1";
+
+    if(rawMode){
+      const fromHash = parseHashPaste();
+      const text = fromHash?.text ?? "";
+      // Mostrar SOLO texto, sin HTML extra
+      document.head.innerHTML = `
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Pastelet RAW</title>
+      `;
+      document.body.style.margin = "0";
+      document.body.style.padding = "16px";
+      document.body.style.background = "#ffffff";
+      document.body.style.color = "#000000";
+      document.body.style.fontFamily = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono','Courier New', monospace";
+      document.body.textContent = text;
+      // Fin en RAW
+      throw new Error("RAW_MODE_END");
+    }
+
+    // ---------------------------
+    // INIT: cargar desde hash o autosave
+    // ---------------------------
+    const fromHash = parseHashPaste();
+    if(fromHash){
+      title.value = fromHash.title || "";
+      format.value = fromHash.format || "txt";
+      editor.value = fromHash.text || "";
+      lastSaved.textContent = "guardado: (desde link)";
+      statsRight.textContent = "modo: desde link";
+      refreshStats();
+      // también lo guardamos en autosave para no perderlo
+      autosave();
+      showToast("Cargado desde link");
+    }else{
+      const ok = loadAutosave();
+      statsRight.textContent = ok ? "modo: autosave" : "modo: editor";
+      refreshStats();
+    }
+
+    // Autosave con debounce
+    let debounceT = null;
+    function scheduleAutosave(){
+      clearTimeout(debounceT);
+      debounceT = setTimeout(() => {
+        autosave();
+        showToast("Guardado");
+      }, 450);
+    }
+
+    editor.addEventListener("input", () => {
+      refreshStats();
+      scheduleAutosave();
+    });
+
+    title.addEventListener("input", scheduleAutosave);
+    format.addEventListener("change", scheduleAutosave);
+
+    // Botones
+    btnClear.addEventListener("click", () => {
+      if(!confirm("¿Seguro que quieres limpiar el editor?")) return;
+      editor.value = "";
+      refreshStats();
+      autosave();
+      showToast("Editor limpio");
+    });
+
+    btnDownload.addEventListener("click", () => {
+      const safeTitle = (title.value.trim() || "pastelet").replace(/[\\/:*?"<>|]/g, "-");
+      const ext = (format.value || "txt");
+      downloadText(`${safeTitle}.${ext}`, editor.value || "");
+      showToast("Descargando...");
+    });
+
+    btnCopyText.addEventListener("click", async () => {
+      const ok = await copyToClipboard(editor.value || "");
+      showToast(ok ? "Texto copiado" : "No se pudo copiar");
+    });
+
+    btnShare.addEventListener("click", async () => {
+      const link = buildShareLink();
+      location.hash = link.split("#")[1] || "";
+      const ok = await copyToClipboard(link);
+      showToast(ok ? "Link generado y copiado" : "Link generado");
+      lastSaved.textContent = `guardado: (link)`;
+      statsRight.textContent = "modo: compartido";
+    });
+
+    btnCopyLink.addEventListener("click", async () => {
+      const link = buildShareLink();
+      const ok = await copyToClipboard(link);
+      showToast(ok ? "Link copiado" : "No se pudo copiar link");
+    });
+
+    btnRaw.addEventListener("click", () => {
+      const shareLink = buildShareLink();
+      const rawLink = buildRawLink(shareLink);
+      window.open(rawLink, "_blank", "noopener,noreferrer");
+    });
+
+    // Atajos útiles
+    document.addEventListener("keydown", async (e) => {
+      // Ctrl+S / Cmd+S: copiar link compartible
+      if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s"){
+        e.preventDefault();
+        const link = buildShareLink();
+        location.hash = link.split("#")[1] || "";
+        await copyToClipboard(link);
+        showToast("Link copiado (Ctrl/Cmd+S)");
+      }
+      // Ctrl+Shift+C: copiar texto
+      if((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "c"){
+        e.preventDefault();
+        await copyToClipboard(editor.value || "");
+        showToast("Texto copiado");
+      }
+    });
+
+    // Stats inicial
+    refreshStats();
+  </script>
+</body>
+</html>
